@@ -115,6 +115,18 @@ let shootCooldown = 0
 let lastTapTime = 0
 let nameInput: HTMLInputElement | null = null
 
+const bgm =
+  new Audio('/sounds/bgm.mp3')
+
+const bossAppearSE =
+  new Audio('/sounds/boss-appear.wav')
+
+const bombSE =
+  new Audio('/sounds/bomb.wav')
+
+const phaseSE =
+  new Audio('/sounds/phase.wav')
+
 // =====================================
 // UI
 // =====================================
@@ -167,6 +179,13 @@ const bullets: Bullet[] = []
 function create(this: Phaser.Scene) {
   isTouchDevice =
   window.innerWidth < 768
+
+  bgm.loop = true
+bgm.volume = 0.25
+
+bossAppearSE.volume = 0.4
+bombSE.volume = 0.45
+phaseSE.volume = 0.45
 
   // =====================================
   // プレイヤー
@@ -1427,6 +1446,8 @@ function startBossEntrance(
 
   gameState = 'playing'
 
+  playSE(bossAppearSE)
+
   phaseChanging = true
 
   boss.y = -100
@@ -1488,6 +1509,8 @@ function startPhaseTransition(
   phaseLevel: number // どのフェーズへ行くかを指定
 ) {
   phaseChanging = true;
+
+  playSE(phaseSE)
 
   // --- フェーズごとの演出設定 ---
   const isFinal = phaseLevel === 3;
@@ -1620,6 +1643,8 @@ function gameOver(scene: Phaser.Scene) {
 
   gameState = 'gameover'
 
+  bgm.pause()
+
   showResult(scene, false)
 
   saveScore(scene)
@@ -1632,6 +1657,8 @@ function gameOver(scene: Phaser.Scene) {
 function clearGame(scene: Phaser.Scene) {
 
   gameState = 'gameover'
+
+  bgm.pause()
 
   showResult(scene, true)
 
@@ -1965,6 +1992,9 @@ scene.input.once(
   nameInput = null
 }
 
+bgm.currentTime = 0
+bgm.play().catch(() => {})
+
   if (playerName === '') {
     playerName = 'NO NAME'
   }
@@ -2009,6 +2039,8 @@ startBossEntrance(scene)
 function useBomb(scene: Phaser.Scene) {
 
   if (bombCount <= 0) return
+
+  playSE(bombSE)
 
   bombCount--
 
@@ -2113,4 +2145,23 @@ function openNameInput() {
       nameInput?.blur()
     }
   })
+}
+
+function playSE(sound: HTMLAudioElement) {
+
+  sound.currentTime = 0
+
+  sound.play().catch(() => {})
+
+  // フェーズSEだけ短く止める
+  if (sound === phaseSE) {
+
+    setTimeout(() => {
+
+      sound.pause()
+
+      sound.currentTime = 0
+
+    }, 1300)
+  }
 }
