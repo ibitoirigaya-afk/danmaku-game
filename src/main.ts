@@ -621,6 +621,16 @@ bombButton.setVisible(false)
 this.input.keyboard!.on(
   'keydown-Z',
   () => {
+
+    if (gameState === 'tutorial') {
+
+      tutorialText.setVisible(false)
+
+      startBossEntrance(this)
+
+      return
+    }
+
     startGame(this)
   }
 )
@@ -691,10 +701,8 @@ function update(this: Phaser.Scene) {
   if (gameState === 'title') {
 
     nameText.setText(
-  isTouchDevice
-    ? `NAME: ${playerName}\nTAP TO INPUT\n${difficulty}`
-    : `NAME: ${playerName}\n${difficulty}`
-)
+      `NAME: ${playerName}\n${difficulty}`
+    )
 
     return
   }
