@@ -445,19 +445,29 @@ startButton.on('pointerdown', () => {
 bombButton.setInteractive()
 bombButton.setVisible(isTouchDevice)
 
-bombButton.on('pointerdown', () => {
+bombButton.on(
+  'pointerdown',
+  (
+    _pointer: Phaser.Input.Pointer,
+    _x: number,
+    _y: number,
+    event: Phaser.Types.Input.EventData
+  ) => {
 
-  if (gameState !== 'playing') return
+    event.stopPropagation()
 
-  const now = Date.now()
+    if (gameState !== 'playing') return
 
-  if (now - lastTapTime < 300) {
+    const now = Date.now()
 
-    useBomb(this)
+    if (now - lastTapTime < 300) {
+
+      useBomb(this)
+    }
+
+    lastTapTime = now
   }
-
-  lastTapTime = now
-})
+)
 
   // =====================================
   // HPバー
@@ -1582,7 +1592,7 @@ function showRanking(
       `${difficulty} RANKING`,
 
       {
-        fontSize: '28px',
+        fontSize: '22px',
         color: '#ffff00',
       }
     )
@@ -1770,7 +1780,7 @@ RANK : ${rank}
       `,
 
       {
-        fontSize: '28px',
+        fontSize: '22px',
         color: '#ffffff',
       }
     )
@@ -1805,7 +1815,7 @@ RANK : ${rank}
         'MASTER!',
 
         {
-          fontSize: '28px',
+          fontSize: '22px',
           color: '#ffff00',
         }
       )
@@ -1817,23 +1827,23 @@ RANK : ${rank}
   scene.add.text(
 
     90,
-    660,
+    500,
 
     'TAP TO RETURN TITLE',
 
     {
       fontSize: '24px',
-      color: '#ffffff',
+      color: '#00ffff',
     }
   )
 
 backText.setDepth(999)
 
+scene.input.removeAllListeners()
+
 scene.input.once(
   'pointerdown',
   () => {
-
-    if (!isTouchDevice) return
 
     location.reload()
   }
