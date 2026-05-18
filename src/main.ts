@@ -453,9 +453,20 @@ startButton = this.add.text(170, 540, 'START', {
 startButton.setInteractive()
 startButton.setVisible(true)
 
-startButton.on('pointerdown', () => {
-  startGame(this)
-})
+startButton.on(
+  'pointerdown',
+  (
+    _pointer: Phaser.Input.Pointer,
+    _x: number,
+    _y: number,
+    event: Phaser.Types.Input.EventData
+  ) => {
+
+    event.stopPropagation()
+
+    startGame(this)
+  }
+)
 
   spellText = this.add.text(
     240,
