@@ -38,6 +38,7 @@ let difficulty: Difficulty =
 
 type GameState =
   | 'title'
+  | 'tutorial'
   | 'playing'
   | 'gameover'
 
@@ -112,6 +113,7 @@ let hardButton: Phaser.GameObjects.Text
 
 let shootCooldown = 0
 let lastTapTime = 0
+let nameInput: HTMLInputElement | null = null
 
 // =====================================
 // UI
@@ -134,6 +136,7 @@ let uiText: Phaser.GameObjects.Text
 let spellText: Phaser.GameObjects.Text
 let nameText: Phaser.GameObjects.Text
 let warningText: Phaser.GameObjects.Text
+let tutorialText: Phaser.GameObjects.Text
 let spellBonus = true
 let bossHPBarBg: Phaser.GameObjects.Rectangle
 let bossHPBar: Phaser.GameObjects.Rectangle
@@ -218,9 +221,32 @@ function create(this: Phaser.Scene) {
   testAttackKey =
   this.input.keyboard!.addKey('T')
 
-  this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
 
+  if (gameState === 'tutorial') {
+
+  tutorialText.setVisible(false)
+
+  startBossEntrance(this)
+
+  return
+}
+
+  if (!isTouchDevice) return
   if (gameState !== 'playing') return
+
+  const now = Date.now()
+
+  if (now - lastTapTime < 300) {
+
+    useBomb(this)
+
+    lastTapTime = 0
+
+    return
+  }
+
+  lastTapTime = now
 
   isTouching = true
   touchX = pointer.x
@@ -326,9 +352,7 @@ this.input.on('pointerup', () => {
   uiText = this.add.text(
     70,
     90,
-    isTouchDevice
-  ? 'SELECT DIFFICULTY\nAND START'
-  : 'PRESS Z TO START\n\n1:EASY\n2:NORMAL\n3:HARD',
+    'SELECT DIFFICULTY\nAND START',
     {
       fontSize: '28px',
       color: '#ffffff',
@@ -345,6 +369,23 @@ this.input.on('pointerup', () => {
       color: '#ffffff',
     }
   )
+
+  nameText.setInteractive()
+
+nameText.on(
+  'pointerdown',
+  () => {
+
+    if (!isTouchDevice) return
+
+    if (gameState !== 'title') {
+      return
+    }
+
+    openNameInput()
+  }
+)
+
   easyButton = this.add.text(60, 470, 'EASY', {
   fontSize: '24px',
   color: '#00ff00',
@@ -370,9 +411,9 @@ easyButton.setInteractive()
 normalButton.setInteractive()
 hardButton.setInteractive()
 
-easyButton.setVisible(isTouchDevice)
-normalButton.setVisible(isTouchDevice)
-hardButton.setVisible(isTouchDevice)
+easyButton.setVisible(true)
+normalButton.setVisible(true)
+hardButton.setVisible(true)
 
 easyButton.on('pointerdown', () => {
   difficulty = 'EASY'
@@ -394,7 +435,7 @@ startButton = this.add.text(170, 540, 'START', {
 })
 
 startButton.setInteractive()
-startButton.setVisible(isTouchDevice)
+startButton.setVisible(true)
 
 startButton.on('pointerdown', () => {
   startGame(this)
@@ -427,6 +468,35 @@ startButton.on('pointerdown', () => {
   warningText.setOrigin(0.5)
   warningText.setVisible(false)
 
+  tutorialText = this.add.text(
+  40,
+  120,
+  `EASY MODE
+
+スマホ/タブレット:
+画面をスライドして移動
+画面を2回タップでボム
+弾は自動で発射されます
+
+PC:
+矢印キーで移動
+Zキーでショット
+Xキーでボム
+
+弾をかすめるとGRAZE
+被弾なし・ボムなしで
+SPELL CARD BONUS!
+
+TAP / CLICK TO START`,
+  {
+    fontSize: '22px',
+    color: '#ffffff',
+    align: 'left',
+  }
+)
+
+tutorialText.setVisible(false)
+
   bombButton = this.add.text(
   370,
   640,
@@ -443,31 +513,31 @@ startButton.on('pointerdown', () => {
 )
 
 bombButton.setInteractive()
-bombButton.setVisible(isTouchDevice)
+bombButton.setVisible(false)
 
-bombButton.on(
-  'pointerdown',
-  (
-    _pointer: Phaser.Input.Pointer,
-    _x: number,
-    _y: number,
-    event: Phaser.Types.Input.EventData
-  ) => {
+// bombButton.on(
+//   'pointerdown',
+//   (
+//     _pointer: Phaser.Input.Pointer,
+//     _x: number,
+//     _y: number,
+//     event: Phaser.Types.Input.EventData
+//   ) => {
 
-    event.stopPropagation()
+//     event.stopPropagation()
 
-    if (gameState !== 'playing') return
+//     if (gameState !== 'playing') return
 
-    const now = Date.now()
+//     const now = Date.now()
 
-    if (now - lastTapTime < 300) {
+//     if (now - lastTapTime < 300) {
 
-      useBomb(this)
-    }
+//       useBomb(this)
+//     }
 
-    lastTapTime = now
-  }
-)
+//     lastTapTime = now
+//   }
+// )
 
   // =====================================
   // HPバー
@@ -621,8 +691,10 @@ function update(this: Phaser.Scene) {
   if (gameState === 'title') {
 
     nameText.setText(
-      `NAME: ${playerName}\n${difficulty}`
-    )
+  isTouchDevice
+    ? `NAME: ${playerName}\nTAP TO INPUT\n${difficulty}`
+    : `NAME: ${playerName}\n${difficulty}`
+)
 
     return
   }
@@ -1855,6 +1927,11 @@ scene.input.once(
 
   if (gameState !== 'title') return
 
+  if (nameInput) {
+  nameInput.remove()
+  nameInput = null
+}
+
   if (playerName === '') {
     playerName = 'NO NAME'
   }
@@ -1875,14 +1952,23 @@ scene.input.once(
   }
 
   uiText.setVisible(false)
-  nameText.setVisible(false)
+nameText.setVisible(false)
 
-  easyButton?.setVisible(false)
-  normalButton?.setVisible(false)
-  hardButton?.setVisible(false)
-  startButton?.setVisible(false)
+easyButton?.setVisible(false)
+normalButton?.setVisible(false)
+hardButton?.setVisible(false)
+startButton?.setVisible(false)
 
-  startBossEntrance(scene)
+if (difficulty === 'EASY') {
+
+  gameState = 'tutorial'
+
+  tutorialText.setVisible(true)
+
+  return
+}
+
+startBossEntrance(scene)
 }
 
 function useBomb(scene: Phaser.Scene) {
@@ -1934,5 +2020,62 @@ function useBomb(scene: Phaser.Scene) {
     alpha: 0,
     duration: 600,
     onComplete: () => ring.destroy(),
+  })
+}
+
+function openNameInput() {
+
+  if (nameInput) {
+    nameInput.focus()
+    return
+  }
+
+  nameInput =
+    document.createElement('input')
+
+  nameInput.type = 'text'
+  nameInput.maxLength = 8
+  nameInput.value =
+    playerName === 'NO NAME'
+      ? ''
+      : playerName
+
+  nameInput.placeholder = 'NAME'
+  nameInput.style.position = 'fixed'
+  nameInput.style.left = '50%'
+  nameInput.style.top = '55%'
+  nameInput.style.transform = 'translate(-50%, -50%)'
+  nameInput.style.fontSize = '24px'
+  nameInput.style.width = '180px'
+  nameInput.style.textAlign = 'center'
+  nameInput.style.zIndex = '9999'
+
+  document.body.appendChild(nameInput)
+
+  nameInput.focus()
+
+  nameInput.addEventListener('input', () => {
+
+    playerName =
+      nameInput!.value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 8)
+  })
+
+  nameInput.addEventListener('blur', () => {
+
+    if (nameInput) {
+      nameInput.remove()
+      nameInput = null
+    }
+  })
+
+  nameInput.addEventListener('keydown', (e) => {
+
+    if (e.key === 'Enter') {
+
+      nameInput?.blur()
+    }
   })
 }
