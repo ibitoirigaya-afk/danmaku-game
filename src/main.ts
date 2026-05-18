@@ -1919,8 +1919,6 @@ RANK : ${rank}
 
 backText.setDepth(999)
 
-scene.input.removeAllListeners()
-
 scene.input.once(
   'pointerdown',
   () => {
@@ -1970,6 +1968,8 @@ startButton?.setVisible(false)
 if (difficulty === 'EASY') {
 
   gameState = 'tutorial'
+
+  tutorialText.setDepth(1000)
 
   tutorialText.setVisible(true)
 
