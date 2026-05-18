@@ -415,16 +415,32 @@ easyButton.setVisible(true)
 normalButton.setVisible(true)
 hardButton.setVisible(true)
 
+easyButton.setAlpha(1)
+normalButton.setAlpha(0.5)
+hardButton.setAlpha(0.5)
+
 easyButton.on('pointerdown', () => {
   difficulty = 'EASY'
+
+  easyButton.setAlpha(1)
+  normalButton.setAlpha(0.5)
+  hardButton.setAlpha(0.5)
 })
 
 normalButton.on('pointerdown', () => {
   difficulty = 'NORMAL'
+
+  easyButton.setAlpha(0.5)
+  normalButton.setAlpha(1)
+  hardButton.setAlpha(0.5)
 })
 
 hardButton.on('pointerdown', () => {
   difficulty = 'HARD'
+
+  easyButton.setAlpha(0.5)
+  normalButton.setAlpha(0.5)
+  hardButton.setAlpha(1)
 })
 
 startButton = this.add.text(170, 540, 'START', {
