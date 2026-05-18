@@ -1,53 +1,78 @@
 import Phaser from 'phaser'
-// import { io } from 'socket.io-client'
 
-const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
-  width: 480,
-  height: 720,
-  backgroundColor: '#000000',
+import {
+  createGameConfig,
+} from './config'
 
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
+import {
+  startBossEntrance as startBossEntranceScene,
+  startPhaseTransition as startPhaseTransitionScene,
+} from './scene'
 
-  scene: {
+import {
+  createTutorialText,
+} from './tutorial'
+
+import {
+  checkSpellBonus,
+} from './ui'
+
+import {
+  getRank,
+  showRanking,
+} from './result'
+
+import {
+  handleBullets,
+} from './collision'
+
+import {
+  movePlayer,
+  shootPlayerBullets,
+} from './player'
+
+import {
+  bossPattern,
+} from './boss'
+
+import {
+  createRanking,
+} from './ranking'
+
+import {
+  clearEnemyBullets,
+  damageEffect,
+  bossExplosion,
+} from './effects'
+
+import {
+  bgm,
+  bombSE,
+  explosionSE,
+  gameOverSE,
+  setupSounds,
+  playSE,
+} from './sounds'
+
+import type {
+  Difficulty,
+  GameState,
+  Bullet,
+} from './types'
+
+const config =
+  createGameConfig(
     create,
     update
-  }, 
-}
+  )
 
 new Phaser.Game(config)
-
-// =====================================
-// 難易度
-// =====================================
-
-type Difficulty =
-  | 'EASY'
-  | 'NORMAL'
-  | 'HARD'
 
 let difficulty: Difficulty =
   'EASY'
 
-// =====================================
-// 状態
-// =====================================
-
-type GameState =
-  | 'title'
-  | 'tutorial'
-  | 'playing'
-  | 'gameover'
-
 let gameState: GameState =
   'title'
-
-// =====================================
-// プレイヤー
-// =====================================
 
 let player: Phaser.GameObjects.Rectangle
 let hitbox: Phaser.GameObjects.Arc
@@ -61,10 +86,6 @@ let invincibleTimer = 0
 
 let playerName = ''
 
-// =====================================
-// ボス
-// =====================================
-
 let boss: Phaser.GameObjects.Arc
 
 let bossHP = 120
@@ -77,34 +98,21 @@ let phase3Started = false
 
 let phaseChanging = false
 
-let spiralAngle = 0
-
-// const socket =
-//   io('http://192.168.11.32:3000',{
-//     reconnection: true,
-//   reconnectionAttempts: 5, // 無限にリトライせず回数を制限
-//   reconnectionDelay: 1000, // 1秒おきに再試行
-//   transports: ['websocket'] // 可能ならWebSocketに固定して安定させる
-//   });
-
-// =====================================
-// キー
-// =====================================
+let spiralAngleRef = {
+  value: 0,
+}
 
 let cursors: Phaser.Types.Input.Keyboard.CursorKeys
 
 let shootKey!: Phaser.Input.Keyboard.Key
 let shiftKey!: Phaser.Input.Keyboard.Key
 let bombKey!: Phaser.Input.Keyboard.Key
-let testAttackKey!: Phaser.Input.Keyboard.Key
 
 let isTouchDevice = false
 
 let isTouching = false
 let touchX = 0
 let touchY = 0
-
-let bombButton: Phaser.GameObjects.Text
 
 let startButton: Phaser.GameObjects.Text
 let easyButton: Phaser.GameObjects.Text
@@ -114,28 +122,6 @@ let hardButton: Phaser.GameObjects.Text
 let shootCooldown = 0
 let lastTapTime = 0
 let nameInput: HTMLInputElement | null = null
-
-const bgm =
-  new Audio('/sounds/bgm.mp3')
-
-const bossAppearSE =
-  new Audio('/sounds/boss-appear.wav')
-
-const bombSE =
-  new Audio('/sounds/bomb.wav')
-
-const phaseSE =
-  new Audio('/sounds/phase.wav')
-
-const explosionSE =
-  new Audio('/sounds/explosion.wav')
-
-const gameOverSE =
-  new Audio('/sounds/gameover.wav')
-
-// =====================================
-// UI
-// =====================================
 
 let score = 0
 
@@ -167,40 +153,13 @@ let damageFlash: Phaser.GameObjects.Rectangle
 let rankingTexts:
   Phaser.GameObjects.Text[] = []
 
-// =====================================
-// 弾
-// =====================================
-
-type Bullet = {
-  shape: Phaser.GameObjects.Arc
-  vx: number
-  vy: number
-  type: 'player' | 'enemy'
-  grazed?: boolean
-}
-
 const bullets: Bullet[] = []
-
-// =====================================
-// CREATE
-// =====================================
 
 function create(this: Phaser.Scene) {
   isTouchDevice =
-  window.innerWidth < 768
+    window.innerWidth < 768
 
-  bgm.loop = true
-bgm.volume = 0.25
-
-bossAppearSE.volume = 0.4
-bombSE.volume = 0.45
-phaseSE.volume = 0.45
-explosionSE.volume = 0.5
-gameOverSE.volume = 0.5
-
-  // =====================================
-  // プレイヤー
-  // =====================================
+  setupSounds()
 
   player = this.add.rectangle(
     240,
@@ -219,20 +178,12 @@ gameOverSE.volume = 0.5
 
   hitbox.setVisible(false)
 
-  // =====================================
-  // ボス
-  // =====================================
-
   boss = this.add.circle(
     240,
     -100,
     30,
     0xff0000
   )
-
-  // =====================================
-  // キー
-  // =====================================
 
   cursors =
     this.input.keyboard!.createCursorKeys()
@@ -248,16 +199,28 @@ gameOverSE.volume = 0.5
   bombKey =
     this.input.keyboard!.addKey('X')
 
-  testAttackKey =
-  this.input.keyboard!.addKey('T')
-
 this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
 
   if (gameState === 'tutorial') {
 
   tutorialText.setVisible(false)
 
-  startBossEntrance(this)
+startBossEntranceScene(
+  this,
+  boss,
+  warningText,
+  spellText,
+  phase,
+  () => {
+    gameState = 'playing'
+  },
+  (value) => {
+    phaseChanging = value
+  },
+  (value) => {
+    spellBonus = value
+  }
+)
 
   return
 }
@@ -300,10 +263,6 @@ this.input.on('pointerup', () => {
   isTouching = false
 })
 
-  // =====================================
-  // 難易度選択
-  // =====================================
-
   this.input.keyboard!.on(
     'keydown-ONE',
     () => {
@@ -324,10 +283,6 @@ this.input.on('pointerup', () => {
       difficulty = 'HARD'
     }
   )
-
-  // =====================================
-  // UI
-  // =====================================
 
   scoreText = this.add.text(
     10,
@@ -441,10 +396,6 @@ easyButton.setInteractive()
 normalButton.setInteractive()
 hardButton.setInteractive()
 
-easyButton.setVisible(true)
-normalButton.setVisible(true)
-hardButton.setVisible(true)
-
 easyButton.setAlpha(1)
 normalButton.setAlpha(0.5)
 hardButton.setAlpha(0.5)
@@ -525,80 +476,8 @@ startButton.on(
   warningText.setOrigin(0.5)
   warningText.setVisible(false)
 
-  tutorialText = this.add.text(
-  40,
-  120,
-  `EASY MODE
-
-スマホ/タブレット:
-画面をスライドして移動
-画面を2回タップでボム
-弾は自動で発射されます
-
-PC:
-矢印キーで移動
-Zキーでショット
-Xキーでボム
-
-弾をかすめるとGRAZE
-被弾なし・ボムなしで
-SPELL CARD BONUS!
-
-TAP / CLICK TO START`,
-  {
-    fontSize: '22px',
-    color: '#ffffff',
-    align: 'left',
-  }
-)
-
-tutorialText.setVisible(false)
-
-  bombButton = this.add.text(
-  370,
-  640,
-  'BOMB',
-  {
-    fontSize: '24px',
-    color: '#ffffff',
-    backgroundColor: '#333333',
-    padding: {
-      x: 12,
-      y: 8,
-    },
-  }
-)
-
-bombButton.setInteractive()
-bombButton.setVisible(false)
-
-// bombButton.on(
-//   'pointerdown',
-//   (
-//     _pointer: Phaser.Input.Pointer,
-//     _x: number,
-//     _y: number,
-//     event: Phaser.Types.Input.EventData
-//   ) => {
-
-//     event.stopPropagation()
-
-//     if (gameState !== 'playing') return
-
-//     const now = Date.now()
-
-//     if (now - lastTapTime < 300) {
-
-//       useBomb(this)
-//     }
-
-//     lastTapTime = now
-//   }
-// )
-
-  // =====================================
-  // HPバー
-  // =====================================
+  tutorialText =
+    createTutorialText(this)
 
   bossHPBarBg =
     this.add.rectangle(
@@ -618,10 +497,6 @@ bombButton.setVisible(false)
       0xff0000
     )
 
-  // =====================================
-  // ダメージ
-  // =====================================
-
   damageFlash =
     this.add.rectangle(
       240,
@@ -633,10 +508,6 @@ bombButton.setVisible(false)
 
   damageFlash.setAlpha(0)
   damageFlash.setDepth(999)
-
-  // =====================================
-  // 名前入力
-  // =====================================
 
   this.input.keyboard!.on(
     'keydown',
@@ -671,10 +542,6 @@ bombButton.setVisible(false)
     }
   )
 
-  // =====================================
-  // START
-  // =====================================
-
 this.input.keyboard!.on(
   'keydown-Z',
   () => {
@@ -683,7 +550,22 @@ this.input.keyboard!.on(
 
       tutorialText.setVisible(false)
 
-      startBossEntrance(this)
+startBossEntranceScene(
+  this,
+  boss,
+  warningText,
+  spellText,
+  phase,
+  () => {
+    gameState = 'playing'
+  },
+  (value) => {
+    phaseChanging = value
+  },
+  (value) => {
+    spellBonus = value
+  }
+)
 
       return
     }
@@ -691,10 +573,6 @@ this.input.keyboard!.on(
     startGame(this)
   }
 )
-
-  // =====================================
-  // RESTART
-  // =====================================
 
   this.input.keyboard!.on(
     'keydown-R',
@@ -708,10 +586,6 @@ this.input.keyboard!.on(
       }
     }
   )
-
-  // =====================================
-  // 弾幕ループ
-  // =====================================
 
   this.time.addEvent({
 
@@ -731,27 +605,18 @@ this.input.keyboard!.on(
         return
       }
 
-      bossPattern(this)
+      bossPattern(
+  this,
+  phase,
+  difficulty,
+  boss,
+  player,
+  bullets,
+  spiralAngleRef
+)
     },
   })
-//   socket.on(
-//   'receiveAttack',
-
-//   (data) => {
-
-//     if (
-//       data.type === 'circle'
-//     ) {
-
-//       enemyAttackBurst(this)
-//     }
-//   }
-// )
 }
-
-// =====================================
-// UPDATE
-// =====================================
 
 function update(this: Phaser.Scene) {
 
@@ -793,26 +658,30 @@ function update(this: Phaser.Scene) {
   bossHPBar.width =
     (bossHP / maxBossHP) * 300
 
-  // =====================================
-  // ボス移動
-  // =====================================
-
   boss.x =
     240 +
     Math.sin(
       this.time.now * 0.001
     ) * 120
 
-  // =====================================
-  // フェーズ移行
-  // =====================================
-
   if (
     bossHP <= 80 &&
     !phase2Started
   ) {
 
-    checkSpellBonus(this)
+    const bonusResult =
+  checkSpellBonus(
+    this,
+    spellBonus,
+    score,
+    spellSuccess,
+    totalBonus
+  )
+
+score = bonusResult.score
+spellSuccess = bonusResult.spellSuccess
+totalBonus = bonusResult.totalBonus
+spellBonus = bonusResult.spellBonus
 
     phase = 2
 
@@ -833,12 +702,22 @@ function update(this: Phaser.Scene) {
 
     phaseChanging = true
 
-    clearEnemyBullets()
+    clearEnemyBullets(bullets)
 
-    startPhaseTransition(
-      this,
-      '「螺旋地獄」', 2
-    )
+    startPhaseTransitionScene(
+  this,
+  boss,
+  warningText,
+  spellText,
+  '「螺旋地獄」',
+  2,
+  (value) => {
+    phaseChanging = value
+  },
+  (value) => {
+    spellBonus = value
+  }
+)
   }
 
   if (
@@ -846,7 +725,19 @@ function update(this: Phaser.Scene) {
     !phase3Started
   ) {
 
-    checkSpellBonus(this)
+    const bonusResult =
+  checkSpellBonus(
+    this,
+    spellBonus,
+    score,
+    spellSuccess,
+    totalBonus
+  )
+
+score = bonusResult.score
+spellSuccess = bonusResult.spellSuccess
+totalBonus = bonusResult.totalBonus
+spellBonus = bonusResult.spellBonus
 
     phase = 3
 
@@ -867,17 +758,23 @@ function update(this: Phaser.Scene) {
 
     phaseChanging = true
 
-    clearEnemyBullets()
+    clearEnemyBullets(bullets)
 
-    startPhaseTransition(
-      this,
-      '「終焉追尾陣」', 3
-    )
+    startPhaseTransitionScene(
+  this,
+  boss,
+  warningText,
+  spellText,
+  '「終焉追尾陣」',
+  3,
+  (value) => {
+    phaseChanging = value
+  },
+  (value) => {
+    spellBonus = value
   }
-
-  // =====================================
-  // 無敵
-  // =====================================
+)
+  }
 
   if (invincible) {
 
@@ -891,57 +788,16 @@ function update(this: Phaser.Scene) {
     }
   }
 
-  // =====================================
-  // 移動
-  // =====================================
-
-  const speed =
-    shiftKey.isDown ? 2 : 5
-
-  if (isTouchDevice && isTouching) {
-
-  player.x += (touchX - player.x) * 0.15
-  player.y += (touchY - player.y) * 0.15
-
-} else {
-
-  if (cursors.left.isDown)
-    player.x -= speed
-
-  if (cursors.right.isDown)
-    player.x += speed
-
-  if (cursors.up.isDown)
-    player.y -= speed
-
-  if (cursors.down.isDown)
-    player.y += speed
-}
-
-  player.x =
-    Phaser.Math.Clamp(
-      player.x,
-      15,
-      465
-    )
-
-  player.y =
-    Phaser.Math.Clamp(
-      player.y,
-      15,
-      705
-    )
-
-  hitbox.x = player.x
-  hitbox.y = player.y
-
-  hitbox.setVisible(
-    shiftKey.isDown
-  )
-
-// =====================================
-// 自機弾
-// =====================================
+  movePlayer(
+  player,
+  hitbox,
+  cursors,
+  shiftKey,
+  isTouchDevice,
+  isTouching,
+  touchX,
+  touchY
+)
 
 shootCooldown--
 
@@ -957,87 +813,14 @@ if (shouldShoot) {
 
   shootCooldown = 8
 
-  // EASY = 3way
-  if (difficulty === 'EASY') {
-
-    for (let i = -1; i <= 1; i++) {
-
-      const bullet =
-        this.add.circle(
-          player.x + i * 12,
-          player.y - 15,
-          5,
-          0x00ff88
-        )
-
-      bullets.push({
-
-        shape: bullet,
-
-        vx: i * 0.5,
-
-        vy: -8,
-
-        type: 'player',
-      })
-    }
-  }
-
-  // NORMAL = 2way
-  if (difficulty === 'NORMAL') {
-
-    for (let i = -1; i <= 0; i++) {
-
-      const bullet =
-        this.add.circle(
-          player.x + (i + 0.5) * 16,
-          player.y - 15,
-          5,
-          0x00ff88
-        )
-
-      bullets.push({
-
-        shape: bullet,
-
-        vx: (i + 0.5) * 0.6,
-
-        vy: -8,
-
-        type: 'player',
-      })
-    }
-  }
-
-  // HARD = 1way
-  if (difficulty === 'HARD') {
-
-    const bullet =
-      this.add.circle(
-        player.x,
-        player.y - 15,
-        5,
-        0x00ff88
-      )
-
-    bullets.push({
-
-      shape: bullet,
-
-      vx: 0,
-
-      vy: -8,
-
-      type: 'player',
-    })
-  }
+  shootPlayerBullets(
+    this,
+    player,
+    difficulty,
+    bullets
+  )
 }
 
-  // =====================================
-  // ボム
-  // =====================================
-
-  // update関数内のボム処理部分を書き換え
 if (
   Phaser.Input.Keyboard.JustDown(
     bombKey
@@ -1046,610 +829,69 @@ if (
   useBomb(this)
 }
 
-if (
-  Phaser.Input.Keyboard.JustDown(
-    testAttackKey
-  )
-) {
-
-  // socket.emit(
-  //   'grazeAttack'
-  // )
-}
-
-  // =====================================
-  // 弾更新
-  // =====================================
-
-  for (
-    let i = bullets.length - 1;
-    i >= 0;
-    i--
-  ) {
-
-    const b = bullets[i]
-
-    b.shape.x += b.vx
-    b.shape.y += b.vy
-
-    // グレイズ
-
-    if (
-      b.type === 'enemy' &&
-      !b.grazed
-    ) {
-
-      const d =
-        Phaser.Math.Distance.Between(
-          player.x,
-          player.y,
-          b.shape.x,
-          b.shape.y
-        )
-
-      if (
-        d < 30 &&
-        d > 8
-      ) {
-
-        b.grazed = true
-
-        graze++
-
-        if (graze % 10 === 0) {
-
-  // socket.emit(
-  //   'grazeAttack'
-  // )
-}
-
-        score += 50
-      }
-    }
-
-    // 被弾
-
-    if (
-      b.type === 'enemy' &&
-      !invincible
-    ) {
-
-      const d =
-        Phaser.Math.Distance.Between(
-          hitbox.x,
-          hitbox.y,
-          b.shape.x,
-          b.shape.y
-        )
-
-      if (d < 6) {
-
-        b.shape.destroy()
-
-        bullets.splice(i, 1)
-
-        playerHP--
-
-        missCount++
-
-        spellBonus = false
-
-        damageEffect(this)
-
-        invincible = true
-
-        invincibleTimer = 120
-
-        player.x = 240
-        player.y = 650
-
-        if (playerHP <= 0) {
-
-          gameOver(this)
-
-          return
-        }
-      }
-    }
-
-    // 自機弾 → ボス
-
-    if (
-      b.type === 'player'
-    ) {
-
-      const dBoss =
-        Phaser.Math.Distance.Between(
-          boss.x,
-          boss.y,
-          b.shape.x,
-          b.shape.y
-        )
-
-      if (dBoss < 30) {
-
-        bossHP--
-
-        b.shape.destroy()
-
-        bullets.splice(i, 1)
-
-        if (bossHP <= 0) {
-
-          checkSpellBonus(this)
-
-          clearGame(this)
-
-          return
-        }
-      }
-    }
-
-    // 削除
-
-    if (
-      b.shape.y < -50 ||
-      b.shape.y > 800 ||
-      b.shape.x < -50 ||
-      b.shape.x > 530
-    ) {
-
-      b.shape.destroy()
-
-      bullets.splice(i, 1)
-    }
-  }
-}
-
-// =====================================
-// ボス弾幕
-// =====================================
-
-function bossPattern(
-  scene: Phaser.Scene
-) {
-
-  if (phase === 1) {
-
-    spiral(scene)
-
-    fan(scene)
-  }
-
-  if (phase === 2) {
-
-    spiral(scene)
-
-    fan(scene)
-
-    circleBurst(scene)
-  }
-
-  if (phase === 3) {
-
-    spiral(scene)
-
-    fan(scene)
-
-    circleBurst(scene)
-
-    homing(scene)
-  }
-
-  if (
-    difficulty === 'HARD'
-  ) {
-
-    circleBurst(scene)
-  }
-}
-
-// =====================================
-// 螺旋
-// =====================================
-
-function spiral(
-  scene: Phaser.Scene
-) {
-
-  let total = 12
-
-  if (
-    difficulty === 'NORMAL'
-  ) {
-    total = 20
-  }
-
-  if (
-    difficulty === 'HARD'
-  ) {
-    total = 32
-  }
-
-  for (
-    let i = 0;
-    i < total;
-    i++
-  ) {
-
-    const angle =
-      spiralAngle +
-      (Math.PI * 2 * i) / total
-
-    const bullet =
-      scene.add.circle(
-        boss.x,
-        boss.y,
-        5,
-        0xff4444
-      )
-
-    bullets.push({
-
-      shape: bullet,
-
-      vx: Math.cos(angle) * 3,
-
-      vy: Math.sin(angle) * 3,
-
-      type: 'enemy',
-    })
-  }
-
-  spiralAngle += 0.25
-}
-
-// =====================================
-// 扇形
-// =====================================
-
-function fan(
-  scene: Phaser.Scene
-) {
-
-  const base =
-    Phaser.Math.Angle.Between(
-      boss.x,
-      boss.y,
-      player.x,
-      player.y
-    )
-
-  let amount = 4
-
-  if (
-    difficulty === 'NORMAL'
-  ) {
-    amount = 6
-  }
-
-  if (
-    difficulty === 'HARD'
-  ) {
-    amount = 9
-  }
-
-  for (
-    let i = -amount;
-    i <= amount;
-    i++
-  ) {
-
-    const angle =
-      base + i * 0.2
-
-    const bullet =
-      scene.add.circle(
-        boss.x,
-        boss.y,
-        5,
-        0xffff00
-      )
-
-    bullets.push({
-
-      shape: bullet,
-
-      vx: Math.cos(angle) * 4,
-
-      vy: Math.sin(angle) * 4,
-
-      type: 'enemy',
-    })
-  }
-}
-
-// =====================================
-// 円形
-// =====================================
-
-function circleBurst(
-  scene: Phaser.Scene
-) {
-
-  let total = 20
-
-  if (
-    difficulty === 'NORMAL'
-  ) {
-    total = 30
-  }
-
-  if (
-    difficulty === 'HARD'
-  ) {
-    total = 48
-  }
-
-  for (
-    let i = 0;
-    i < total;
-    i++
-  ) {
-
-    const angle =
-      (Math.PI * 2 * i) / total
-
-    const bullet =
-      scene.add.circle(
-        boss.x,
-        boss.y,
-        5,
-        0x00ffff
-      )
-
-    bullets.push({
-
-      shape: bullet,
-
-      vx: Math.cos(angle) * 4,
-
-      vy: Math.sin(angle) * 4,
-
-      type: 'enemy',
-    })
-  }
-}
-
-// =====================================
-// 追尾
-// =====================================
-
-function homing(
-  scene: Phaser.Scene
-) {
-
-  const angle =
-    Phaser.Math.Angle.Between(
-      boss.x,
-      boss.y,
-      player.x,
-      player.y
-    )
-
-  const bullet =
-    scene.add.circle(
-      boss.x,
-      boss.y,
-      7,
-      0xff00ff
-    )
-
-  bullets.push({
-
-    shape: bullet,
-
-    vx: Math.cos(angle) * 6,
-
-    vy: Math.sin(angle) * 6,
-
-    type: 'enemy',
-  })
-}
-
-// =====================================
-// ボス登場
-// =====================================
-
-function startBossEntrance(
-  scene: Phaser.Scene
-) {
-
-  gameState = 'playing'
-
-  playSE(bossAppearSE)
-
-  phaseChanging = true
-
-  boss.y = -100
-
-  warningText.setVisible(true)
-
-  scene.tweens.add({
-
-    targets: warningText,
-
-    alpha: 0,
-
-    yoyo: true,
-
-    repeat: 5,
-
-    duration: 200,
+const bulletResult =
+  handleBullets({
+    bullets,
+    player,
+    hitbox,
+    boss,
+    invincible,
+    score,
+    graze,
+    playerHP,
+    missCount,
+    spellBonus,
+
+    onDamage: () => {
+
+      damageEffect(this, damageFlash)
+
+      invincible = true
+      invincibleTimer = 120
+
+      player.x = 240
+      player.y = 650
+    },
+
+    onGameOver: () => {
+
+      gameOver(this)
+    },
+
+    onBossDefeated: () => {
+
+      bossHP--
+    },
   })
 
-  scene.time.delayedCall(
-    2000,
-    () => {
+score = bulletResult.score
+graze = bulletResult.graze
+playerHP = bulletResult.playerHP
+missCount = bulletResult.missCount
+spellBonus = bulletResult.spellBonus
 
-      warningText.setVisible(false)
+if (bulletResult.bossHit && bossHP <= 0) {
 
-      scene.tweens.add({
+  const bonusResult =
+    checkSpellBonus(
+      this,
+      spellBonus,
+      score,
+      spellSuccess,
+      totalBonus
+    )
 
-        targets: boss,
+  score = bonusResult.score
+  spellSuccess = bonusResult.spellSuccess
+  totalBonus = bonusResult.totalBonus
+  spellBonus = bonusResult.spellBonus
 
-        y: 120,
+  clearGame(this)
 
-        duration: 1500,
-
-        ease: 'Sine.easeOut',
-
-        onComplete: () => {
-
-          phaseChanging = false
-
-          spellBonus = true
-
-          spellCard(
-            scene,
-            `PHASE ${phase}`
-          )
-        },
-      })
-    }
-  )
+  return
 }
 
-// =====================================
-// フェーズ演出
-// =====================================
-
-function startPhaseTransition(
-  scene: Phaser.Scene,
-  spellName: string,
-  phaseLevel: number // どのフェーズへ行くかを指定
-) {
-  phaseChanging = true;
-
-  playSE(phaseSE)
-
-  // --- フェーズごとの演出設定 ---
-  const isFinal = phaseLevel === 3;
-  const effectColor = isFinal ? 0xff0000 : 0x00ffff; // 3は赤、2は青
-  const flashAlpha = isFinal ? 1.0 : 0.5;
-
-  // 1. 画面フラッシュ（色の変化）
-  const flash = scene.add.rectangle(240, 360, 480, 720, effectColor);
-  flash.setAlpha(0).setDepth(1000);
-  scene.tweens.add({
-    targets: flash,
-    alpha: flashAlpha,
-    duration: isFinal ? 400 : 150,
-    yoyo: true,
-    onComplete: () => flash.destroy()
-  });
-
-  // 2. 衝撃波リング（フェーズ3はより大きく、多く）
-  const count = isFinal ? 10 : 4;
-  for (let i = 0; i < count; i++) {
-    const ring = scene.add.circle(boss.x, boss.y, 10, effectColor, 0);
-    ring.setStrokeStyle(isFinal ? 4 : 2, effectColor);
-    scene.tweens.add({
-      targets: ring,
-      radius: isFinal ? 800 : 400,
-      alpha: 0,
-      delay: i * (isFinal ? 80 : 150),
-      duration: 1000,
-      onComplete: () => ring.destroy()
-    });
-  }
-
-  // 3. 最終フェーズ限定：画面の激しい揺れ
-  if (isFinal) {
-    scene.cameras.main.shake(1000, 0.02);
-  }
-
-  // --- 共通のボス移動とテキスト表示 ---
-  boss.y = -100;
-  warningText.setVisible(true);
-  // フェーズ3は警告文字を赤く、フェーズ2は青白く
-  warningText.setColor(isFinal ? '#ff0000' : '#88ffff');
-
-  scene.time.delayedCall(2000, () => {
-    warningText.setVisible(false);
-    scene.tweens.add({
-      targets: boss,
-      y: 120,
-      duration: isFinal ? 2000 : 1200, // 最終ボスはゆっくり威圧的に登場
-      ease: 'Back.easeOut', // 少し行き過ぎて戻る動き
-      onComplete: () => {
-        phaseChanging = false;
-        spellBonus = true;
-        spellCard(scene, spellName);
-      },
-    });
-  });
 }
-
-// =====================================
-// スペル表示
-// =====================================
-
-function spellCard(
-  scene: Phaser.Scene,
-  name: string
-) {
-
-  spellText.setText(name)
-
-  spellText.setVisible(true)
-
-  scene.time.delayedCall(
-    2000,
-    () => {
-
-      spellText.setVisible(false)
-    }
-  )
-}
-
-// =====================================
-// 敵弾削除
-// =====================================
-
-function clearEnemyBullets() {
-
-  for (
-    let i = bullets.length - 1;
-    i >= 0;
-    i--
-  ) {
-
-    if (
-      bullets[i].type === 'enemy'
-    ) {
-
-      bullets[i].shape.destroy()
-
-      bullets.splice(i, 1)
-    }
-  }
-}
-
-// =====================================
-// ダメージ演出
-// =====================================
-
-function damageEffect(
-  scene: Phaser.Scene
-) {
-
-  damageFlash.setAlpha(0.5)
-
-  scene.tweens.add({
-
-    targets: damageFlash,
-
-    alpha: 0,
-
-    duration: 250,
-  })
-}
-
-// =====================================
-// GAME OVER
-// =====================================
-
 function gameOver(scene: Phaser.Scene) {
 
   gameState = 'gameover'
@@ -1709,21 +951,17 @@ function gameOver(scene: Phaser.Scene) {
   )
 }
 
-// =====================================
-// CLEAR
-// =====================================
-
 function clearGame(scene: Phaser.Scene) {
 
   gameState = 'gameover'
 
   bgm.pause()
 
-  clearEnemyBullets()
+  clearEnemyBullets(bullets)
 
   playSE(explosionSE)
 
-  bossExplosion(scene)
+  bossExplosion(scene, boss)
 
   scene.time.delayedCall(
     1500,
@@ -1736,183 +974,43 @@ function clearGame(scene: Phaser.Scene) {
   )
 }
 
-// =====================================
-// スコア保存
-// =====================================
-
 function saveScore(
   scene: Phaser.Scene
 ) {
 
-  const saved =
-    localStorage.getItem(
-      `ranking-${difficulty}`
-    )
+const saved =
+  localStorage.getItem(
+    `ranking-${difficulty}`
+  )
 
-  let rankings = saved
+const currentRanking =
+  saved
     ? JSON.parse(saved)
     : []
 
-  rankings.push({
-    name: playerName,
-    score: Math.floor(score),
-  })
-
-  rankings.sort(
-    (a: any, b: any) =>
-      b.score - a.score
+const rankings =
+  createRanking(
+    currentRanking,
+    {
+      name: playerName,
+      score: Math.floor(score),
+    }
   )
 
-  rankings = rankings.slice(0, 5)
+localStorage.setItem(
+  `ranking-${difficulty}`,
+  JSON.stringify(rankings)
+)
 
-  localStorage.setItem(
-    `ranking-${difficulty}`,
-    JSON.stringify(rankings)
-  )
+showRanking(
+  scene,
+  rankings,
+  rankingTexts,
+  difficulty,
+  playerName,
+  score
+)
 
-  showRanking(scene, rankings)
-}
-
-// =====================================
-// ランキング
-// =====================================
-
-function showRanking(
-  scene: Phaser.Scene,
-  data: any[]
-) {
-
-  rankingTexts.forEach(
-    (t) => t.destroy()
-  )
-
-  rankingTexts = []
-
-  const title =
-    scene.add.text(
-
-      110,
-      520,
-
-      `${difficulty} RANKING`,
-
-      {
-        fontSize: '22px',
-        color: '#ffff00',
-      }
-    )
-
-  rankingTexts.push(title)
-
-  data
-    .slice(0, 5)
-
-    .forEach((r, i) => {
-
-      const isPlayer =
-
-        r.name === playerName &&
-        Math.floor(r.score) ===
-        Math.floor(score)
-
-      const text =
-        scene.add.text(
-
-          90,
-          570 + i * 30,
-
-          `${i + 1}. ${r.name} ${Math.floor(r.score)}`,
-
-          {
-            fontSize: '22px',
-
-            color:
-              isPlayer
-                ? '#00ff88'
-                : '#ffffff',
-          }
-        )
-
-      rankingTexts.push(text)
-    })
-  }
-
-  function checkSpellBonus(
-  scene: Phaser.Scene
-) {
-
-  if (!spellBonus) {
-
-    spellBonus = true
-
-    return
-  }
-
-  score += 50000
-
-  spellSuccess++
-
-totalBonus += 50000
-
-  const bonusText =
-    scene.add.text(
-
-      240,
-      260,
-
-      'SPELL CARD BONUS\n+50000',
-
-      {
-        fontSize: '32px',
-        color: '#00ffff',
-        align: 'center',
-      }
-    )
-
-  bonusText.setOrigin(0.5)
-
-  scene.tweens.add({
-
-    targets: bonusText,
-
-    alpha: 0,
-
-    y: 220,
-
-    duration: 2000,
-
-    onComplete: () => {
-
-      bonusText.destroy()
-    },
-  })
-
-  spellBonus = true
-}
-
-
-function getRank() {
-
-  if (
-    missCount === 0 &&
-    spellSuccess >= 3
-  ) {
-    return 'S'
-  }
-
-  if (
-    missCount <= 1
-  ) {
-    return 'A'
-  }
-
-  if (
-    missCount <= 3
-  ) {
-    return 'B'
-  }
-
-  return 'C'
 }
 
 function showResult(
@@ -1951,7 +1049,11 @@ bullets.forEach((b) => {
 
 bullets.length = 0
 
-  const rank = getRank()
+  const rank =
+  getRank(
+    missCount,
+    spellSuccess
+  )
 
   const title = clear
     ? 'GAME CLEAR!!'
@@ -2104,7 +1206,22 @@ if (difficulty === 'EASY') {
   return
 }
 
-startBossEntrance(scene)
+startBossEntranceScene(
+  scene,
+  boss,
+  warningText,
+  spellText,
+  phase,
+  () => {
+    gameState = 'playing'
+  },
+  (value) => {
+    phaseChanging = value
+  },
+  (value) => {
+    spellBonus = value
+  }
+)
 }
 
 function useBomb(scene: Phaser.Scene) {
@@ -2120,7 +1237,7 @@ function useBomb(scene: Phaser.Scene) {
   invincible = true
   invincibleTimer = 180
 
-  clearEnemyBullets()
+  clearEnemyBullets(bullets)
 
   const flash =
     scene.add.rectangle(
@@ -2218,25 +1335,6 @@ function openNameInput() {
   })
 }
 
-function playSE(sound: HTMLAudioElement) {
-
-  sound.currentTime = 0
-
-  sound.play().catch(() => {})
-
-  // フェーズSEだけ短く止める
-  if (sound === phaseSE) {
-
-    setTimeout(() => {
-
-      sound.pause()
-
-      sound.currentTime = 0
-
-    }, 1300)
-  }
-}
-
 function clearPlayScreen() {
 
   player.setVisible(false)
@@ -2260,59 +1358,4 @@ function clearPlayScreen() {
   })
 
   bullets.length = 0
-}
-
-function bossExplosion(scene: Phaser.Scene) {
-
-  boss.setVisible(false)
-
-  for (let i = 0; i < 20; i++) {
-
-    const angle =
-      (Math.PI * 2 * i) / 20
-
-    const piece =
-      scene.add.circle(
-        boss.x,
-        boss.y,
-        Phaser.Math.Between(4, 10),
-        0xffaa00
-      )
-
-    piece.setDepth(1000)
-
-    scene.tweens.add({
-      targets: piece,
-      x: boss.x + Math.cos(angle) * Phaser.Math.Between(80, 180),
-      y: boss.y + Math.sin(angle) * Phaser.Math.Between(80, 180),
-      alpha: 0,
-      scale: 2,
-      duration: 900,
-      onComplete: () => {
-        piece.destroy()
-      },
-    })
-  }
-
-  const flash =
-    scene.add.circle(
-      boss.x,
-      boss.y,
-      20,
-      0xffffff
-    )
-
-  flash.setDepth(1001)
-
-  scene.tweens.add({
-    targets: flash,
-    scale: 8,
-    alpha: 0,
-    duration: 700,
-    onComplete: () => {
-      flash.destroy()
-    },
-  })
-
-  scene.cameras.main.shake(500, 0.02)
 }
