@@ -99,8 +99,8 @@ io.on("connection", (socket) => {
     console.log("disconnected")
   })
 })
-server.listen(3000, () => {
-  console.log(
-    "socket server running"
-  )
+const PORT = process.env.PORT || 3000
+
+server.listen(PORT, () => {
+  console.log(`socket server running on ${PORT}`)
 })

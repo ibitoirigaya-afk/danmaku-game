@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { io } from 'socket.io-client'
+// import { io } from 'socket.io-client'
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -78,13 +78,13 @@ let phaseChanging = false
 
 let spiralAngle = 0
 
-const socket =
-  io('http://192.168.11.32:3000',{
-    reconnection: true,
-  reconnectionAttempts: 5, // 無限にリトライせず回数を制限
-  reconnectionDelay: 1000, // 1秒おきに再試行
-  transports: ['websocket'] // 可能ならWebSocketに固定して安定させる
-  });
+// const socket =
+//   io('http://192.168.11.32:3000',{
+//     reconnection: true,
+//   reconnectionAttempts: 5, // 無限にリトライせず回数を制限
+//   reconnectionDelay: 1000, // 1秒おきに再試行
+//   transports: ['websocket'] // 可能ならWebSocketに固定して安定させる
+//   });
 
 // =====================================
 // キー
@@ -93,7 +93,6 @@ const socket =
 let cursors: Phaser.Types.Input.Keyboard.CursorKeys
 
 let shootKey!: Phaser.Input.Keyboard.Key
-let restartKey!: Phaser.Input.Keyboard.Key
 let shiftKey!: Phaser.Input.Keyboard.Key
 let bombKey!: Phaser.Input.Keyboard.Key
 let testAttackKey!: Phaser.Input.Keyboard.Key
@@ -207,8 +206,7 @@ function create(this: Phaser.Scene) {
   shootKey =
     this.input.keyboard!.addKey('Z')
 
-  restartKey =
-    this.input.keyboard!.addKey('R')
+
 
   shiftKey =
     this.input.keyboard!.addKey('SHIFT')
@@ -582,19 +580,19 @@ this.input.keyboard!.on(
       bossPattern(this)
     },
   })
-  socket.on(
-  'receiveAttack',
+//   socket.on(
+//   'receiveAttack',
 
-  (data) => {
+//   (data) => {
 
-    if (
-      data.type === 'circle'
-    ) {
+//     if (
+//       data.type === 'circle'
+//     ) {
 
-      enemyAttackBurst(this)
-    }
-  }
-)
+//       enemyAttackBurst(this)
+//     }
+//   }
+// )
 }
 
 // =====================================
@@ -900,9 +898,9 @@ if (
   )
 ) {
 
-  socket.emit(
-    'grazeAttack'
-  )
+  // socket.emit(
+  //   'grazeAttack'
+  // )
 }
 
   // =====================================
@@ -946,9 +944,9 @@ if (
 
         if (graze % 10 === 0) {
 
-  socket.emit(
-    'grazeAttack'
-  )
+  // socket.emit(
+  //   'grazeAttack'
+  // )
 }
 
         score += 50
@@ -1520,25 +1518,37 @@ function clearGame(scene: Phaser.Scene) {
 // スコア保存
 // =====================================
 
-async function saveScore(scene: Phaser.Scene) {
+function saveScore(
+  scene: Phaser.Scene
+) {
 
-  await fetch('http://localhost:3000/score', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      score,
-      name: playerName,
-      difficulty,
-    }),
+  const saved =
+    localStorage.getItem(
+      `ranking-${difficulty}`
+    )
+
+  let rankings = saved
+    ? JSON.parse(saved)
+    : []
+
+  rankings.push({
+    name: playerName,
+    score: Math.floor(score),
   })
 
-  const res = await fetch(
-    `http://localhost:3000/ranking/${difficulty}?t=${Date.now()}`
+  rankings.sort(
+    (a: any, b: any) =>
+      b.score - a.score
   )
 
- const data = await res.json()
+  rankings = rankings.slice(0, 5)
 
- showRanking(scene, data)
+  localStorage.setItem(
+    `ranking-${difficulty}`,
+    JSON.stringify(rankings)
+  )
+
+  showRanking(scene, rankings)
 }
 
 // =====================================
@@ -1658,39 +1668,6 @@ totalBonus += 50000
   spellBonus = true
 }
 
-function enemyAttackBurst(
-  scene: Phaser.Scene
-) {
-
-  for (
-    let i = 0;
-    i < 24;
-    i++
-  ) {
-
-    const angle =
-      (Math.PI * 2 * i) / 24
-
-    const bullet =
-      scene.add.circle(
-        player.x,
-        0,
-        6,
-        0xaa00ff
-      )
-
-    bullets.push({
-
-      shape: bullet,
-
-      vx: Math.cos(angle) * 3,
-
-      vy: Math.sin(angle) * 3 + 2,
-
-      type: 'enemy',
-    })
-  }
-}
 
 function getRank() {
 
