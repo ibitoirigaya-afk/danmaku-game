@@ -111,6 +111,7 @@ let normalButton: Phaser.GameObjects.Text
 let hardButton: Phaser.GameObjects.Text
 
 let shootCooldown = 0
+let lastTapTime = 0
 
 // =====================================
 // UI
@@ -219,7 +220,6 @@ function create(this: Phaser.Scene) {
 
   this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
 
-  if (!isTouchDevice) return
   if (gameState !== 'playing') return
 
   isTouching = true
@@ -449,7 +449,14 @@ bombButton.on('pointerdown', () => {
 
   if (gameState !== 'playing') return
 
-  useBomb(this)
+  const now = Date.now()
+
+  if (now - lastTapTime < 300) {
+
+    useBomb(this)
+  }
+
+  lastTapTime = now
 })
 
   // =====================================
@@ -1805,6 +1812,33 @@ RANK : ${rank}
 
     sText.setDepth(999)
   }
+
+    const backText =
+  scene.add.text(
+
+    90,
+    660,
+
+    'TAP TO RETURN TITLE',
+
+    {
+      fontSize: '24px',
+      color: '#ffffff',
+    }
+  )
+
+backText.setDepth(999)
+
+scene.input.once(
+  'pointerdown',
+  () => {
+
+    if (!isTouchDevice) return
+
+    location.reload()
+  }
+)
+
 }
 
   function startGame(scene: Phaser.Scene) {
