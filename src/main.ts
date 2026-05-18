@@ -127,6 +127,12 @@ const bombSE =
 const phaseSE =
   new Audio('/sounds/phase.wav')
 
+const explosionSE =
+  new Audio('/sounds/explosion.wav')
+
+const gameOverSE =
+  new Audio('/sounds/gameover.wav')
+
 // =====================================
 // UI
 // =====================================
@@ -152,6 +158,9 @@ let tutorialText: Phaser.GameObjects.Text
 let spellBonus = true
 let bossHPBarBg: Phaser.GameObjects.Rectangle
 let bossHPBar: Phaser.GameObjects.Rectangle
+
+let gameOverTitleText: Phaser.GameObjects.Text
+let tapToResultText: Phaser.GameObjects.Text
 
 let damageFlash: Phaser.GameObjects.Rectangle
 
@@ -186,6 +195,8 @@ bgm.volume = 0.25
 bossAppearSE.volume = 0.4
 bombSE.volume = 0.45
 phaseSE.volume = 0.45
+explosionSE.volume = 0.5
+gameOverSE.volume = 0.5
 
   // =====================================
   // プレイヤー
@@ -1645,9 +1656,57 @@ function gameOver(scene: Phaser.Scene) {
 
   bgm.pause()
 
-  showResult(scene, false)
+  playSE(gameOverSE)
 
-  saveScore(scene)
+  clearPlayScreen()
+
+  gameOverTitleText = scene.add.text(
+    240,
+    300,
+    'GAME OVER',
+    {
+      fontSize: '52px',
+      color: '#ff0000',
+      fontStyle: 'bold',
+    }
+  )
+
+  gameOverTitleText.setOrigin(0.5)
+  gameOverTitleText.setDepth(1000)
+
+  tapToResultText = scene.add.text(
+    240,
+    420,
+    'TAP TO RESULT',
+    {
+      fontSize: '26px',
+      color: '#ffffff',
+    }
+  )
+
+  tapToResultText.setOrigin(0.5)
+  tapToResultText.setDepth(1000)
+
+  scene.tweens.add({
+    targets: tapToResultText,
+    alpha: 0.3,
+    yoyo: true,
+    repeat: -1,
+    duration: 600,
+  })
+
+  scene.input.once(
+    'pointerdown',
+    () => {
+
+      gameOverTitleText.destroy()
+      tapToResultText.destroy()
+
+      showResult(scene, false)
+
+      saveScore(scene)
+    }
+  )
 }
 
 // =====================================
@@ -1660,9 +1719,21 @@ function clearGame(scene: Phaser.Scene) {
 
   bgm.pause()
 
-  showResult(scene, true)
+  clearEnemyBullets()
 
-  saveScore(scene)
+  playSE(explosionSE)
+
+  bossExplosion(scene)
+
+  scene.time.delayedCall(
+    1500,
+    () => {
+
+      showResult(scene, true)
+
+      saveScore(scene)
+    }
+  )
 }
 
 // =====================================
@@ -2164,4 +2235,84 @@ function playSE(sound: HTMLAudioElement) {
 
     }, 1300)
   }
+}
+
+function clearPlayScreen() {
+
+  player.setVisible(false)
+  hitbox.setVisible(false)
+  boss.setVisible(false)
+
+  bossHPBar.setVisible(false)
+  bossHPBarBg.setVisible(false)
+
+  scoreText.setVisible(false)
+  playerHPText.setVisible(false)
+  bombText.setVisible(false)
+  grazeText.setVisible(false)
+  phaseText.setVisible(false)
+  spellText.setVisible(false)
+  warningText.setVisible(false)
+  tutorialText.setVisible(false)
+
+  bullets.forEach((b) => {
+    b.shape.destroy()
+  })
+
+  bullets.length = 0
+}
+
+function bossExplosion(scene: Phaser.Scene) {
+
+  boss.setVisible(false)
+
+  for (let i = 0; i < 20; i++) {
+
+    const angle =
+      (Math.PI * 2 * i) / 20
+
+    const piece =
+      scene.add.circle(
+        boss.x,
+        boss.y,
+        Phaser.Math.Between(4, 10),
+        0xffaa00
+      )
+
+    piece.setDepth(1000)
+
+    scene.tweens.add({
+      targets: piece,
+      x: boss.x + Math.cos(angle) * Phaser.Math.Between(80, 180),
+      y: boss.y + Math.sin(angle) * Phaser.Math.Between(80, 180),
+      alpha: 0,
+      scale: 2,
+      duration: 900,
+      onComplete: () => {
+        piece.destroy()
+      },
+    })
+  }
+
+  const flash =
+    scene.add.circle(
+      boss.x,
+      boss.y,
+      20,
+      0xffffff
+    )
+
+  flash.setDepth(1001)
+
+  scene.tweens.add({
+    targets: flash,
+    scale: 8,
+    alpha: 0,
+    duration: 700,
+    onComplete: () => {
+      flash.destroy()
+    },
+  })
+
+  scene.cameras.main.shake(500, 0.02)
 }
