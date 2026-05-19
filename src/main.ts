@@ -417,21 +417,21 @@ nameText.on(
   }
 )
 
-  easyButton = this.add.text(60, 430, 'EASY', {
+  easyButton = this.add.text(60, 470, 'EASY', {
   fontSize: '24px',
   color: '#00ff00',
   backgroundColor: '#333333',
   padding: { x: 12, y: 8 },
 })
 
-normalButton = this.add.text(180, 430, 'NORMAL', {
+normalButton = this.add.text(180, 470, 'NORMAL', {
   fontSize: '24px',
   color: '#ffff00',
   backgroundColor: '#333333',
   padding: { x: 12, y: 8 },
 })
 
-hardButton = this.add.text(330, 430, 'HARD', {
+hardButton = this.add.text(330, 470, 'HARD', {
   fontSize: '24px',
   color: '#ff4444',
   backgroundColor: '#333333',
@@ -470,7 +470,7 @@ hardButton.on('pointerdown', () => {
   hardButton.setAlpha(1)
 })
 
-startButton = this.add.text(170, 520, 'START', {
+startButton = this.add.text(170, 560, 'START', {
   fontSize: '28px',
   color: '#ffffff',
   backgroundColor: '#333333',
