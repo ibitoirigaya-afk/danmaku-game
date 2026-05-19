@@ -1,5 +1,9 @@
 import Phaser from 'phaser'
 
+export type Stage =
+  | 'STAGE1'
+  | 'STAGE2'
+
 export type Difficulty =
   | 'EASY'
   | 'NORMAL'

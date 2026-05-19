@@ -52,12 +52,14 @@ import {
   gameOverSE,
   setupSounds,
   playSE,
+  stage2Bgm,
 } from './sounds'
 
 import type {
   Difficulty,
   GameState,
   Bullet,
+  Stage,
 } from './types'
 
 const config =
@@ -70,6 +72,9 @@ new Phaser.Game(config)
 
 let difficulty: Difficulty =
   'EASY'
+
+let stage: Stage =
+  'STAGE1'
 
 let gameState: GameState =
   'title'
@@ -102,6 +107,10 @@ let spiralAngleRef = {
   value: 0,
 }
 
+let bossTimerRef = {
+  value: 0,
+}
+
 let cursors: Phaser.Types.Input.Keyboard.CursorKeys
 
 let shootKey!: Phaser.Input.Keyboard.Key
@@ -118,6 +127,9 @@ let startButton: Phaser.GameObjects.Text
 let easyButton: Phaser.GameObjects.Text
 let normalButton: Phaser.GameObjects.Text
 let hardButton: Phaser.GameObjects.Text
+
+let stage1Button: Phaser.GameObjects.Text
+let stage2Button: Phaser.GameObjects.Text
 
 let shootCooldown = 0
 let lastTapTime = 0
@@ -345,9 +357,43 @@ this.input.on('pointerup', () => {
     }
   )
 
+  stage1Button = this.add.text(80, 300, 'STAGE 1', {
+  fontSize: '24px',
+  color: '#00ffff',
+  backgroundColor: '#333333',
+  padding: { x: 12, y: 8 },
+})
+
+stage2Button = this.add.text(260, 300, 'STAGE 2', {
+  fontSize: '24px',
+  color: '#ff88ff',
+  backgroundColor: '#333333',
+  padding: { x: 12, y: 8 },
+})
+
+stage1Button.setInteractive()
+stage2Button.setInteractive()
+
+stage1Button.setAlpha(1)
+stage2Button.setAlpha(0.5)
+
+stage1Button.on('pointerdown', () => {
+  stage = 'STAGE1'
+
+  stage1Button.setAlpha(1)
+  stage2Button.setAlpha(0.5)
+})
+
+stage2Button.on('pointerdown', () => {
+  stage = 'STAGE2'
+
+  stage1Button.setAlpha(0.5)
+  stage2Button.setAlpha(1)
+})
+
   nameText = this.add.text(
     120,
-    380,
+    360,
     'NAME:',
     {
       fontSize: '24px',
@@ -371,21 +417,21 @@ nameText.on(
   }
 )
 
-  easyButton = this.add.text(60, 470, 'EASY', {
+  easyButton = this.add.text(60, 430, 'EASY', {
   fontSize: '24px',
   color: '#00ff00',
   backgroundColor: '#333333',
   padding: { x: 12, y: 8 },
 })
 
-normalButton = this.add.text(180, 470, 'NORMAL', {
+normalButton = this.add.text(180, 430, 'NORMAL', {
   fontSize: '24px',
   color: '#ffff00',
   backgroundColor: '#333333',
   padding: { x: 12, y: 8 },
 })
 
-hardButton = this.add.text(330, 470, 'HARD', {
+hardButton = this.add.text(330, 430, 'HARD', {
   fontSize: '24px',
   color: '#ff4444',
   backgroundColor: '#333333',
@@ -424,7 +470,7 @@ hardButton.on('pointerdown', () => {
   hardButton.setAlpha(1)
 })
 
-startButton = this.add.text(170, 540, 'START', {
+startButton = this.add.text(170, 520, 'START', {
   fontSize: '28px',
   color: '#ffffff',
   backgroundColor: '#333333',
@@ -609,10 +655,12 @@ startBossEntranceScene(
   this,
   phase,
   difficulty,
+  stage,
   boss,
   player,
   bullets,
-  spiralAngleRef
+  spiralAngleRef,
+  bossTimerRef
 )
     },
   })
@@ -623,8 +671,8 @@ function update(this: Phaser.Scene) {
   if (gameState === 'title') {
 
     nameText.setText(
-      `NAME: ${playerName}\n${difficulty}`
-    )
+  `NAME: ${playerName}\n${stage}\n${difficulty}`
+)
 
     return
   }
@@ -704,12 +752,17 @@ spellBonus = bonusResult.spellBonus
 
     clearEnemyBullets(bullets)
 
+    const phase2Name =
+  stage === 'STAGE2'
+    ? '「蒼月波紋」'
+    : '「螺旋地獄」'
+
     startPhaseTransitionScene(
   this,
   boss,
   warningText,
   spellText,
-  '「螺旋地獄」',
+  phase2Name,
   2,
   (value) => {
     phaseChanging = value
@@ -760,12 +813,17 @@ spellBonus = bonusResult.spellBonus
 
     clearEnemyBullets(bullets)
 
+    const phase3Name =
+  stage === 'STAGE2'
+    ? '「紅蓮十字陣」'
+    : '「終焉追尾陣」'
+
     startPhaseTransitionScene(
   this,
   boss,
   warningText,
   spellText,
-  '「終焉追尾陣」',
+  phase3Name,
   3,
   (value) => {
     phaseChanging = value
@@ -897,6 +955,7 @@ function gameOver(scene: Phaser.Scene) {
   gameState = 'gameover'
 
   bgm.pause()
+  stage2Bgm.pause()
 
   playSE(gameOverSE)
 
@@ -956,6 +1015,7 @@ function clearGame(scene: Phaser.Scene) {
   gameState = 'gameover'
 
   bgm.pause()
+  stage2Bgm.pause()
 
   clearEnemyBullets(bullets)
 
@@ -980,7 +1040,7 @@ function saveScore(
 
 const saved =
   localStorage.getItem(
-    `ranking-${difficulty}`
+    `ranking-${stage}-${difficulty}`
   )
 
 const currentRanking =
@@ -998,7 +1058,7 @@ const rankings =
   )
 
 localStorage.setItem(
-  `ranking-${difficulty}`,
+  `ranking-${stage}-${difficulty}`,
   JSON.stringify(rankings)
 )
 
@@ -1006,7 +1066,7 @@ showRanking(
   scene,
   rankings,
   rankingTexts,
-  difficulty,
+  `${stage} ${difficulty}`,
   playerName,
   score
 )
@@ -1165,8 +1225,19 @@ scene.input.once(
   nameInput = null
 }
 
-bgm.currentTime = 0
-bgm.play().catch(() => {})
+bgm.pause()
+stage2Bgm.pause()
+
+if (stage === 'STAGE2') {
+
+  stage2Bgm.currentTime = 0
+  stage2Bgm.play().catch(() => {})
+
+} else {
+
+  bgm.currentTime = 0
+  bgm.play().catch(() => {})
+}
 
   if (playerName === '') {
     playerName = 'NO NAME'
@@ -1187,6 +1258,9 @@ bgm.play().catch(() => {})
     bombCount = 1
   }
 
+  bossTimerRef.value = 0
+spiralAngleRef.value = 0
+
   uiText.setVisible(false)
 nameText.setVisible(false)
 
@@ -1194,6 +1268,20 @@ easyButton?.setVisible(false)
 normalButton?.setVisible(false)
 hardButton?.setVisible(false)
 startButton?.setVisible(false)
+
+if (stage === 'STAGE2') {
+
+  boss.setFillStyle(0x8844ff)
+  scene.cameras.main.setBackgroundColor('#12001f')
+
+} else {
+
+  boss.setFillStyle(0xff0000)
+  scene.cameras.main.setBackgroundColor('#000000')
+}
+
+stage1Button?.setVisible(false)
+stage2Button?.setVisible(false)
 
 if (difficulty === 'EASY') {
 

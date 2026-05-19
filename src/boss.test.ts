@@ -81,26 +81,65 @@ describe('bossPattern', () => {
     }
 
     bossPattern(
-      fakeScene as any,
-      1,
-      'EASY',
-      {
-        x: 100,
-        y: 100,
-      } as any,
-
-      {
-        x: 200,
-        y: 200,
-      } as any,
-
-      bullets,
-
-      {
-        value: 0,
-      }
-    )
+  fakeScene as any,
+  1,
+  'EASY',
+  'STAGE1',
+  {
+    x: 100,
+    y: 100,
+  } as any,
+  {
+    x: 200,
+    y: 200,
+  } as any,
+  bullets,
+  {
+    value: 0,
+  },
+  {
+    value: 0,
+  }
+)
 
     expect(bullets.length).toBeGreaterThan(0)
   })
+})
+
+it('STAGE2でも弾を生成する', () => {
+
+  const bullets: any[] = []
+
+  const fakeScene = {
+    add: {
+      circle: () => ({
+        x: 0,
+        y: 0,
+      }),
+    },
+  }
+
+  bossPattern(
+    fakeScene as any,
+    1,
+    'EASY',
+    'STAGE2',
+    {
+      x: 100,
+      y: 100,
+    } as any,
+    {
+      x: 200,
+      y: 200,
+    } as any,
+    bullets,
+    {
+      value: 0,
+    },
+    {
+      value: 39,
+    }
+  )
+
+  expect(bullets.length).toBeGreaterThan(0)
 })
