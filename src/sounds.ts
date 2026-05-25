@@ -4,6 +4,9 @@ export const bgm =
   export const stage2Bgm =
   new Audio('/sounds/stage2-bgm.mp3')
 
+  export const stage3Bgm =
+  new Audio('/sounds/stage3-bgm.mp3')
+
 export const bossAppearSE =
   new Audio('/sounds/boss-appear.wav')
 
@@ -26,6 +29,9 @@ export function setupSounds() {
 
   stage2Bgm.loop = true
   stage2Bgm.volume = 0.25
+
+  stage3Bgm.loop = true
+stage3Bgm.volume = 0.25
 
   bossAppearSE.volume = 0.4
   bombSE.volume = 0.45

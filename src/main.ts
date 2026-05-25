@@ -53,6 +53,7 @@ import {
   setupSounds,
   playSE,
   stage2Bgm,
+  stage3Bgm,
 } from './sounds'
 
 import type {
@@ -60,6 +61,7 @@ import type {
   GameState,
   Bullet,
   Stage,
+  Beam,
 } from './types'
 
 const config =
@@ -130,6 +132,7 @@ let hardButton: Phaser.GameObjects.Text
 
 let stage1Button: Phaser.GameObjects.Text
 let stage2Button: Phaser.GameObjects.Text
+let stage3Button: Phaser.GameObjects.Text
 
 let shootCooldown = 0
 let lastTapTime = 0
@@ -166,7 +169,7 @@ let rankingTexts:
   Phaser.GameObjects.Text[] = []
 
 const bullets: Bullet[] = []
-
+const beams: Beam[] = []
 function create(this: Phaser.Scene) {
   isTouchDevice =
     window.innerWidth < 768
@@ -357,14 +360,14 @@ this.input.on('pointerup', () => {
     }
   )
 
-  stage1Button = this.add.text(80, 300, 'STAGE 1', {
+  stage1Button = this.add.text(45, 300, 'STAGE 1', {
   fontSize: '24px',
   color: '#00ffff',
   backgroundColor: '#333333',
   padding: { x: 12, y: 8 },
 })
 
-stage2Button = this.add.text(260, 300, 'STAGE 2', {
+stage2Button = this.add.text(185, 300, 'STAGE 2', {
   fontSize: '24px',
   color: '#ff88ff',
   backgroundColor: '#333333',
@@ -374,14 +377,25 @@ stage2Button = this.add.text(260, 300, 'STAGE 2', {
 stage1Button.setInteractive()
 stage2Button.setInteractive()
 
+stage3Button = this.add.text(325, 300, 'STAGE 3', {
+  fontSize: '24px',
+  color: '#ff4444',
+  backgroundColor: '#333333',
+  padding: { x: 12, y: 8 },
+})
+
+stage3Button.setInteractive()
+
 stage1Button.setAlpha(1)
 stage2Button.setAlpha(0.5)
+stage3Button.setAlpha(0.5)
 
 stage1Button.on('pointerdown', () => {
   stage = 'STAGE1'
 
   stage1Button.setAlpha(1)
   stage2Button.setAlpha(0.5)
+  stage3Button.setAlpha(0.5)
 })
 
 stage2Button.on('pointerdown', () => {
@@ -389,6 +403,15 @@ stage2Button.on('pointerdown', () => {
 
   stage1Button.setAlpha(0.5)
   stage2Button.setAlpha(1)
+  stage3Button.setAlpha(0.5)
+})
+
+stage3Button.on('pointerdown', () => {
+  stage = 'STAGE3'
+
+  stage1Button.setAlpha(0.5)
+  stage2Button.setAlpha(0.5)
+  stage3Button.setAlpha(1)
 })
 
   nameText = this.add.text(
@@ -651,7 +674,7 @@ startBossEntranceScene(
         return
       }
 
-      bossPattern(
+bossPattern(
   this,
   phase,
   difficulty,
@@ -659,6 +682,7 @@ startBossEntranceScene(
   boss,
   player,
   bullets,
+  beams,
   spiralAngleRef,
   bossTimerRef
 )
@@ -752,10 +776,12 @@ spellBonus = bonusResult.spellBonus
 
     clearEnemyBullets(bullets)
 
-    const phase2Name =
-  stage === 'STAGE2'
-    ? '「蒼月波紋」'
-    : '「螺旋地獄」'
+const phase2Name =
+  stage === 'STAGE3'
+    ? '「炎壁・灼熱回廊」'
+    : stage === 'STAGE2'
+      ? '「蒼月波紋」'
+      : '「螺旋地獄」'
 
     startPhaseTransitionScene(
   this,
@@ -813,10 +839,12 @@ spellBonus = bonusResult.spellBonus
 
     clearEnemyBullets(bullets)
 
-    const phase3Name =
-  stage === 'STAGE2'
-    ? '「紅蓮十字陣」'
-    : '「終焉追尾陣」'
+const phase3Name =
+  stage === 'STAGE3'
+    ? '「焔符・双界封鎖」'
+    : stage === 'STAGE2'
+      ? '「紅蓮十字陣」'
+      : '「終焉追尾陣」'
 
     startPhaseTransitionScene(
   this,
@@ -928,6 +956,63 @@ playerHP = bulletResult.playerHP
 missCount = bulletResult.missCount
 spellBonus = bulletResult.spellBonus
 
+for (
+  let i = beams.length - 1;
+  i >= 0;
+  i--
+) {
+
+  const beam = beams[i]
+
+  beam.timer--
+
+  if (
+    beam.active &&
+    !invincible
+  ) {
+
+    const playerBounds =
+      player.getBounds()
+
+    const beamBounds =
+      beam.shape.getBounds()
+
+    if (
+      Phaser.Geom.Intersects.RectangleToRectangle(
+        playerBounds,
+        beamBounds
+      )
+    ) {
+
+      playerHP--
+      missCount++
+      spellBonus = false
+
+      damageEffect(this, damageFlash)
+
+      invincible = true
+      invincibleTimer = 120
+
+      player.x = 240
+      player.y = 650
+
+      if (playerHP <= 0) {
+
+        gameOver(this)
+
+        return
+      }
+    }
+  }
+
+  if (beam.timer <= 0) {
+
+    beam.shape.destroy()
+
+    beams.splice(i, 1)
+  }
+}
+
 if (bulletResult.bossHit && bossHP <= 0) {
 
   const bonusResult =
@@ -956,6 +1041,7 @@ function gameOver(scene: Phaser.Scene) {
 
   bgm.pause()
   stage2Bgm.pause()
+  stage3Bgm.pause()
 
   playSE(gameOverSE)
 
@@ -1016,8 +1102,15 @@ function clearGame(scene: Phaser.Scene) {
 
   bgm.pause()
   stage2Bgm.pause()
+  stage3Bgm.pause()
 
   clearEnemyBullets(bullets)
+
+  beams.forEach((b) => {
+  b.shape.destroy()
+})
+
+beams.length = 0
 
   playSE(explosionSE)
 
@@ -1108,6 +1201,12 @@ bullets.forEach((b) => {
 })
 
 bullets.length = 0
+
+beams.forEach((b) => {
+  b.shape.destroy()
+})
+
+beams.length = 0
 
   const rank =
   getRank(
@@ -1227,8 +1326,14 @@ scene.input.once(
 
 bgm.pause()
 stage2Bgm.pause()
+stage3Bgm.pause()
 
-if (stage === 'STAGE2') {
+if (stage === 'STAGE3') {
+
+  stage3Bgm.currentTime = 0
+  stage3Bgm.play().catch(() => {})
+
+} else if (stage === 'STAGE2') {
 
   stage2Bgm.currentTime = 0
   stage2Bgm.play().catch(() => {})
@@ -1269,7 +1374,12 @@ normalButton?.setVisible(false)
 hardButton?.setVisible(false)
 startButton?.setVisible(false)
 
-if (stage === 'STAGE2') {
+if (stage === 'STAGE3') {
+
+  boss.setFillStyle(0xff6600)
+  scene.cameras.main.setBackgroundColor('#1f0700')
+
+} else if (stage === 'STAGE2') {
 
   boss.setFillStyle(0x8844ff)
   scene.cameras.main.setBackgroundColor('#12001f')
@@ -1282,6 +1392,7 @@ if (stage === 'STAGE2') {
 
 stage1Button?.setVisible(false)
 stage2Button?.setVisible(false)
+stage3Button?.setVisible(false)
 
 if (difficulty === 'EASY') {
 

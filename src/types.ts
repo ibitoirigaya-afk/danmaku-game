@@ -3,6 +3,7 @@ import Phaser from 'phaser'
 export type Stage =
   | 'STAGE1'
   | 'STAGE2'
+  | 'STAGE3'
 
 export type Difficulty =
   | 'EASY'
@@ -21,4 +22,10 @@ export type Bullet = {
   vy: number
   type: 'player' | 'enemy'
   grazed?: boolean
+}
+
+export type Beam = {
+  shape: Phaser.GameObjects.Rectangle
+  active: boolean
+  timer: number
 }

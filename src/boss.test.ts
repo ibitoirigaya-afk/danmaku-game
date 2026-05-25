@@ -70,6 +70,7 @@ describe('bossPattern', () => {
   it('弾を生成する', () => {
 
     const bullets: any[] = []
+    const beams: any[] = []
 
     const fakeScene = {
       add: {
@@ -94,6 +95,7 @@ describe('bossPattern', () => {
     y: 200,
   } as any,
   bullets,
+  beams,
   {
     value: 0,
   },
@@ -109,7 +111,7 @@ describe('bossPattern', () => {
 it('STAGE2でも弾を生成する', () => {
 
   const bullets: any[] = []
-
+  const beams: any[] = []
   const fakeScene = {
     add: {
       circle: () => ({
@@ -133,6 +135,7 @@ it('STAGE2でも弾を生成する', () => {
       y: 200,
     } as any,
     bullets,
+    beams,
     {
       value: 0,
     },
