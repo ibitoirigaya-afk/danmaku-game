@@ -178,8 +178,8 @@ function spiral(
 
     bullets.push({
       shape: bullet,
-      vx: Math.cos(angle) * 3,
-      vy: Math.sin(angle) * 3,
+      vx: Math.cos(angle) * 7,
+      vy: Math.sin(angle) * 7,
       type: 'enemy',
     })
   }
@@ -707,8 +707,8 @@ function stage3SpreadPattern(
 
     bullets.push({
       shape: bullet,
-      vx: Math.cos(angle) * 3,
-      vy: Math.sin(angle) * 3,
+      vx: Math.cos(angle) * 6,
+      vy: Math.sin(angle) * 6,
       type: 'enemy',
     })
   }
@@ -743,8 +743,8 @@ function stage3CirclePattern(
 
     bullets.push({
       shape: bullet,
-      vx: Math.cos(angle) * 2,
-      vy: Math.sin(angle) * 2,
+      vx: Math.cos(angle) * 3,
+      vy: Math.sin(angle) * 3,
       type: 'enemy',
     })
   }
@@ -758,10 +758,10 @@ function stage3SideShotPattern(
 
   const speed =
     difficulty === 'HARD'
-      ? 4
+      ? 8
       : difficulty === 'NORMAL'
-        ? 3.5
-        : 3
+        ? 7
+        : 6
 
   const leftBullet =
     scene.add.circle(
@@ -810,7 +810,7 @@ function stage3DoubleBeamPattern(
   ]
 
   const cycle =
-    Math.floor(bossTimerRef.value / 3)
+    Math.floor(bossTimerRef.value / 2)
 
   const startFromCenter =
     cycle % 2 === 0
@@ -842,12 +842,14 @@ function stage3HorizontalBeamPattern(
 ) {
 
   const beamYs = [
-    160,
-    230,
-    300,
-    370,
-    440,
-    510,
+    140,
+    210,
+    280,
+    350,
+    420,
+    490,
+    560,
+    620,
   ]
 
   const index =
